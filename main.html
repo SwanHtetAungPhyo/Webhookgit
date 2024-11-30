@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Webhook Git Commits</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f9;
+    }
+
+    header {
+      background-color: #007acc;
+      color: white;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .commit {
+      border-bottom: 1px solid #ddd;
+      padding: 10px 0;
+    }
+
+    .commit:last-child {
+      border-bottom: none;
+    }
+
+    .commit .message {
+      font-weight: bold;
+      margin: 5px 0;
+    }
+
+    .commit .details {
+      color: #555;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Real-time Git Commits</h1>
+</header>
+<div class="container" id="commit-container">
+  <p>Waiting for commits...</p>
+</div>
+
+<script>
+  // WebSocket connection
+  const socket = new WebSocket("ws://localhost:3005/ws");
+
+  const commitContainer = document.getElementById("commit-container");
+
+  // Listen for messages
+  socket.onmessage = function (event) {
+    const payload = JSON.parse(event.data);
+
+    // Clear "Waiting for commits..." message if it's the first commit
+    if (commitContainer.children.length === 1 && commitContainer.children[0].tagName === "P") {
+      commitContainer.innerHTML = "";
+    }
+
+    // Create elements for the new commit
+    const commitBlock = document.createElement("div");
+    commitBlock.className = "commit";
+
+    const message = document.createElement("p");
+    message.className = "message";
+    message.textContent = payload.commits[0].message;
+
+    const details = document.createElement("p");
+    details.className = "details";
+    details.innerHTML = `
+                <strong>Repository:</strong> ${payload.repository.name} <br>
+                <strong>Branch:</strong> ${payload.ref.split('/').pop()} <br>
+                <strong>Author:</strong> ${payload.commits[0].author.name} <br>
+                <strong>Commit ID:</strong> ${payload.commits[0].id}
+            `;
+
+    commitBlock.appendChild(message);
+    commitBlock.appendChild(details);
+
+    // Append the new commit block to the container
+    commitContainer.prepend(commitBlock);
+  };
+
+  // Handle connection errors
+  socket.onerror = function () {
+    console.error("WebSocket error occurred.");
+    const errorMsg = document.createElement("p");
+    errorMsg.textContent = "Error connecting to WebSocket.";
+    commitContainer.appendChild(errorMsg);
+  };
+
+  // Handle connection closure
+  socket.onclose = function () {
+    console.warn("WebSocket connection closed.");
+    const closeMsg = document.createElement("p");
+    closeMsg.textContent = "WebSocket connection closed.";
+    commitContainer.appendChild(closeMsg);
+  };
+</script>
+</body>
+</html>
